@@ -1,0 +1,21 @@
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[package]
+name = "polyequal"
+version = "0.1.0"
+edition = "2021"
+authors = ["Vitaly Chezganov"]
+description = "Algorithm that allows to split polylines into segments by the defined list of points not necessary belonging to the polyline"
+keywords = ["polyline", "splitting", "geometry"]
+
+homepage = "https://github.com/vchezganov/polyequal"
+repository = "https://github.com/vchezganov/polyequal"
+readme = "README.md"
+license-file = "LICENSE"
+
+[profile.release]
+lto = true
+
+
+[dependencies]
+polysplit = "0.1.0"
