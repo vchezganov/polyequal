@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PolySplit</title>
+</head>
+<body>
+    <textarea id="polyline"></textarea>
+    <textarea id="points"></textarea>
+    <button id="parse">Parse</button>
+    <textarea id="result"></textarea>
+    <button id="draw">Draw</button>
+    <button id="drawReverse">Draw Reverse</button>
+    <canvas id="workspace" width="1920" height="1080"></canvas>
+
+    <script>
+        function display(name, points) {
+            let val = '';
+            points.forEach(([x, y], index) => {
+                if (index > 0) {
+                    val += ', ';
+                }
+                val += `(${x}.0, ${y}.0)`;
+            })
+
+            const elem = document.getElementById(name);
+            elem.value = `[${val}]`;
+        }
+
+        const cnv = document.getElementById('workspace');
+        const ctx = cnv.getContext('2d');
+
+        function drawGrid() {
+            ctx.clearRect(0, 0, cnv.width, cnv.height);
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillRect(0, 0, cnv.width, cnv.height);
+
+            for (let i = 0; i < 1080; i += 20) {
+                ctx.beginPath();
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = '#ddd';
+                ctx.moveTo(0, i);
+                ctx.lineTo(1920, i);
+                ctx.stroke();
+            }
+
+            for (let i = 0; i < 1920; i += 20) {
+                ctx.beginPath();
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = '#ddd';
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, 1080);
+                ctx.stroke();
+            }
+        }
+
+        drawGrid();
+
+        const cnvLeft = cnv.offsetLeft + cnv.clientLeft;
+        const cnvTop = cnv.offsetTop + cnv.clientTop;
+        let polyline_a = [];
+        let polyline_b = [];
+
+        function drawPolyline(polyline) {
+            if (polyline.length === 0) {
+                return;
+            }
+
+            polyline.forEach(([x, y]) => {
+                ctx.beginPath();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'blue';
+                ctx.arc(x, y, 3, 0, 2 * Math.PI);
+                ctx.stroke();
+            });
+
+            ctx.beginPath();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = 'blue';
+            ctx.moveTo(polyline[0][0], polyline[0][1]);
+            polyline.forEach(([x, y]) => {
+                ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+        }
+
+        function drawPoints(points) {
+            points.forEach(([x, y]) => {
+                ctx.beginPath();
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = 'red';
+                ctx.arc(x, y, 5, 0, 2 * Math.PI);
+                ctx.stroke();
+            });
+        }
+
+        cnv.addEventListener('click', e => {
+            let x = event.pageX - cnvLeft;
+            let y = event.pageY - cnvTop;
+
+            const mx = x % 20;
+            x = x + (mx <= 10 ? -mx : 20 - mx);
+            const my = y % 20;
+            y = y + (my <= 10 ? -my : 20 - my);
+
+            ctx.beginPath();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = 'blue';
+            ctx.arc(x, y, 3, 0, 2 * Math.PI);
+            ctx.stroke();
+
+            if (polyline_a.length > 0) {
+                const p = polyline_a[polyline_a.length - 1];
+                ctx.beginPath();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'blue';
+                ctx.moveTo(p[0], p[1]);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+            }
+
+            polyline_a.push([x, y]);
+            console.log(polyline_a);
+            display('polyline', polyline_a);
+        });
+
+        cnv.addEventListener('contextmenu', e => {
+            e.preventDefault();
+
+            let x = event.pageX - cnvLeft;
+            let y = event.pageY - cnvTop;
+
+            const mx = x % 20;
+            x = x + (mx <= 10 ? -mx : 20 - mx);
+            const my = y % 20;
+            y = y + (my <= 10 ? -my : 20 - my);
+
+            ctx.beginPath();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = 'red';
+            ctx.arc(x, y, 3, 0, 2 * Math.PI);
+            ctx.stroke();
+
+            if (polyline_b.length > 0) {
+                const p = polyline_b[polyline_b.length - 1];
+                ctx.beginPath();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'red';
+                ctx.moveTo(p[0], p[1]);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+            }
+
+            polyline_b.push([x, y]);
+            console.log(polyline_b);
+            display('points', polyline_b);
+        });
+
+        const btnParse = document.getElementById('parse');
+        btnParse.addEventListener('click', e => {
+            polyline = JSON.parse(document.getElementById('polyline').value.replaceAll('(', '[').replaceAll(')', ']'));
+            points = JSON.parse(document.getElementById('points').value.replaceAll('(', '[').replaceAll(')', ']'));
+
+            drawGrid();
+            drawPolyline(polyline);
+            drawPoints(points);
+        });
+
+        function countPixel(ax, ay, bx, by) {
+            let count = 0;
+            for (let i = ax; i <= bx; i += 1) {
+                for (let j = ay; j <= by; j += 1) {
+                    const d = ctx.getImageData(i, j, 1, 1).data;
+                    if (d[0] === 255 && d[1] === 255 && d[2] === 255) {
+                        count += 1;
+                    }
+                }
+            }
+            return count;
+        }
+
+        const btn = document.getElementById('draw');
+        btn.addEventListener('click', e => {
+            const data = document.getElementById('result').value.replaceAll('(', '[').replaceAll(')', ']');
+            const result = JSON.parse(data);
+            // alert(data);
+
+            result.forEach((segment, index) => {
+                const [ax, ay] = segment[0];
+                const [bx, by] = segment[segment.length - 1];
+                const pattern = [2, 2];
+
+                ctx.beginPath();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'red';
+                ctx.setLineDash(pattern);
+                ctx.moveTo(ax, ay);
+                ctx.lineTo(points[index][0], points[index][1]);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'red';
+                ctx.setLineDash(pattern);
+                ctx.moveTo(bx, by);
+                ctx.lineTo(points[index + 1][0], points[index + 1][1]);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.lineWidth = 7;
+                ctx.strokeStyle = index % 2 == 0 ? "rgba(255, 0, 255, 0.4)" : "rgba(0, 255, 255, 0.4)";
+                ctx.setLineDash([]);
+                ctx.moveTo(segment[0][0], segment[0][1]);
+                segment.forEach(([x, y]) => {
+                    ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+            });
+
+            points.forEach((point, index) => {
+                const shift = 40;
+                const shiftText = 7;
+                const [px, py] = point;
+
+                let pixels = countPixel(px - shift, py - shift, px, py);
+                let posX = px - shiftText;
+                let posY = py - shiftText;
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'bottom';
+
+                const pixels2 = countPixel(px, py - shift, px + shift, py);
+                if (pixels2 > pixels) {
+                    pixels = pixels2;
+                    posX = px + shiftText;
+                    posY = py - shiftText;
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'bottom';
+                }
+
+                const pixels3 = countPixel(px - shift, py, px, py + shift);
+                if (pixels3 > pixels) {
+                    pixels = pixels3;
+                    posX = px - shiftText;
+                    posY = py + shiftText;
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'top';
+                }
+
+                const pixels4 = countPixel(px, py, px + shift, py + shift);
+                if (pixels4 > pixels) {
+                    pixels = pixels4;
+                    posX = px + shiftText;
+                    posY = py + shiftText;
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'top';
+                }
+
+                console.log(pixels, pixels2, pixels3, pixels4);
+
+                ctx.fillStyle = "#000000";
+                ctx.fillText((index + 1).toString(), posX, posY);
+            });
+        });
+
+        function drawResult(result, points) {
+            result.forEach((segment, index) => {
+                const [ax, ay] = segment[0];
+                const [bx, by] = segment[segment.length - 1];
+                const pattern = [2, 2];
+
+                ctx.beginPath();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'red';
+                ctx.setLineDash(pattern);
+                ctx.moveTo(ax, ay);
+                ctx.lineTo(points[index][0], points[index][1]);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'red';
+                ctx.setLineDash(pattern);
+                ctx.moveTo(bx, by);
+                ctx.lineTo(points[index + 1][0], points[index + 1][1]);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.lineWidth = 7;
+                ctx.strokeStyle = index % 2 == 0 ? "rgba(255, 0, 255, 0.4)" : "rgba(0, 255, 255, 0.4)";
+                ctx.setLineDash([]);
+                ctx.moveTo(segment[0][0], segment[0][1]);
+                segment.forEach(([x, y]) => {
+                    ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+            });
+
+            points.forEach((point, index) => {
+                const shift = 40;
+                const shiftText = 7;
+                const [px, py] = point;
+
+                let pixels = countPixel(px - shift, py - shift, px, py);
+                let posX = px - shiftText;
+                let posY = py - shiftText;
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'bottom';
+
+                const pixels2 = countPixel(px, py - shift, px + shift, py);
+                if (pixels2 > pixels) {
+                    pixels = pixels2;
+                    posX = px + shiftText;
+                    posY = py - shiftText;
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'bottom';
+                }
+
+                const pixels3 = countPixel(px - shift, py, px, py + shift);
+                if (pixels3 > pixels) {
+                    pixels = pixels3;
+                    posX = px - shiftText;
+                    posY = py + shiftText;
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'top';
+                }
+
+                const pixels4 = countPixel(px, py, px + shift, py + shift);
+                if (pixels4 > pixels) {
+                    pixels = pixels4;
+                    posX = px + shiftText;
+                    posY = py + shiftText;
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'top';
+                }
+
+                console.log(pixels, pixels2, pixels3, pixels4);
+
+                ctx.fillStyle = "#000000";
+                ctx.fillText((index + 1).toString(), posX, posY);
+            });
+        }
+
+        document.getElementById('drawReverse').addEventListener('click', e => {
+            drawGrid();
+            const pol = polyline.map(([x, y]) => [x, 600 - y]);
+            drawPolyline(pol);
+            const poi = points.map(([x, y]) => [x, 600 - y]);
+            drawPoints(poi);
+
+            const data = document.getElementById('result').value.replaceAll('(', '[').replaceAll(')', ']');
+            const result = JSON.parse(data).map(segment => {
+                return segment.map(([x, y]) => [x, 600 - y]);
+            });
+            drawResult(result, poi);
+
+            ctx.beginPath();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#000';
+            ctx.moveTo(0, 600);
+            ctx.lineTo(1920, 600);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.lineWidth = 3;
+            ctx.moveTo(0, 600);
+            ctx.lineTo(0, 0);
+            ctx.stroke();
+
+            window.open(cnv.toDataURL('image/png'));
+        });
+    </script>
+</body>
+</html>
