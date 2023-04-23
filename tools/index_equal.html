@@ -63,7 +63,7 @@
         let polyline_a = [];
         let polyline_b = [];
 
-        function drawPolyline(polyline) {
+        function drawPolyline(polyline, color) {
             if (polyline.length === 0) {
                 return;
             }
@@ -71,14 +71,14 @@
             polyline.forEach(([x, y]) => {
                 ctx.beginPath();
                 ctx.lineWidth = 2;
-                ctx.strokeStyle = 'blue';
+                ctx.strokeStyle = color;
                 ctx.arc(x, y, 3, 0, 2 * Math.PI);
                 ctx.stroke();
             });
 
             ctx.beginPath();
             ctx.lineWidth = 2;
-            ctx.strokeStyle = 'blue';
+            ctx.strokeStyle = color;
             ctx.moveTo(polyline[0][0], polyline[0][1]);
             polyline.forEach(([x, y]) => {
                 ctx.lineTo(x, y);
@@ -160,12 +160,12 @@
 
         const btnParse = document.getElementById('parse');
         btnParse.addEventListener('click', e => {
-            polyline = JSON.parse(document.getElementById('polyline').value.replaceAll('(', '[').replaceAll(')', ']'));
-            points = JSON.parse(document.getElementById('points').value.replaceAll('(', '[').replaceAll(')', ']'));
+            polyline_a = JSON.parse(document.getElementById('polyline').value.replaceAll('(', '[').replaceAll(')', ']'));
+            polyline_b = JSON.parse(document.getElementById('points').value.replaceAll('(', '[').replaceAll(')', ']'));
 
             drawGrid();
-            drawPolyline(polyline);
-            drawPoints(points);
+            drawPolyline(polyline_a, 'blue');
+            drawPolyline(polyline_b, 'red');
         });
 
         function countPixel(ax, ay, bx, by) {
@@ -185,7 +185,9 @@
         btn.addEventListener('click', e => {
             const data = document.getElementById('result').value.replaceAll('(', '[').replaceAll(')', ']');
             const result = JSON.parse(data);
-            // alert(data);
+
+            drawPolyline(result, 'green');
+            return;
 
             result.forEach((segment, index) => {
                 const [ax, ay] = segment[0];
