@@ -12,17 +12,17 @@ pub fn polyline_equal1(a: &[Point], b: &[Point], threshold: f64) -> bool {
 
     let mut polyline = Vec::new();
     polyline.extend_from_slice(&segments[0]);
-    for segment in segments.iter() {
+    for segment in segments.iter().skip(1) {
         polyline.extend_from_slice(&segment[1..]);
     }
 
-    let second_split = polyline_split(&b, &polyline, threshold);
+    let second_split = polyline_split(b, &polyline, threshold);
 
     second_split.is_ok()
 }
 
 
-pub fn polyline_equal(b: &[Point], a: &[Point], threshold: f64) -> bool {
+pub fn polyline_equal2(b: &[Point], a: &[Point], threshold: f64) -> bool {
     let threshold = Some(threshold);
 
     let first_split = polyline_split(a, b, threshold);
@@ -33,11 +33,11 @@ pub fn polyline_equal(b: &[Point], a: &[Point], threshold: f64) -> bool {
 
     let mut polyline = Vec::new();
     polyline.extend_from_slice(&first_segments[0]);
-    for segment in first_segments.iter() {
+    for segment in first_segments.iter().skip(1) {
         polyline.extend_from_slice(&segment[1..]);
     }
 
-    let second_split = polyline_split(&b, &polyline, threshold);
+    let second_split = polyline_split(b, &polyline, threshold);
     let second_segments = match second_split {
         Ok(v) => v,
         Err(_) => return false,
@@ -55,12 +55,77 @@ pub fn polyline_equal(b: &[Point], a: &[Point], threshold: f64) -> bool {
     }
 
 
-    println!("{:?}", polyline);
-    panic!("asd");
+    // println!("{:?}", polyline);
+    // panic!("asd");
 
     true
 }
 
+pub fn polyline_equal(a: &[Point], b: &[Point], threshold: f64) -> bool {
+    let threshold = Some(threshold);
+
+    let a_split_by_b = match polyline_split(a, b, threshold) {
+        Ok(segments) => segments,
+        Err(_) => return false,
+    };
+
+    let mut c = Vec::<Point>::new();
+    c.extend_from_slice(&a_split_by_b[0]);
+    for segment in a_split_by_b.iter().skip(1) {
+        c.extend_from_slice(&segment[1..]);
+    }
+
+    // println!("{}", format!("{:?}", c).replace("Point", ""));
+
+    let b_split_by_c = match polyline_split(b, &c, threshold) {
+        Ok(segments) => segments,
+        Err(_) => return false,
+    };
+
+
+    let mut d = Vec::<Point>::new();
+    d.extend_from_slice(&b_split_by_c[0]);
+    for segment in b_split_by_c.iter().skip(1) {
+        d.extend_from_slice(&segment[1..]);
+    }
+
+    // println!("{}", format!("{:?}", d).replace("Point", ""));
+
+
+    // Building new polyline
+    let mut result = Vec::<Point>::new();
+
+    let mut b_point_index = 0;
+    let mut index = 0;
+    for segment in a_split_by_b.iter() {
+        let p0 = segment[0];
+        let p1 = b[b_point_index];
+        b_point_index += 1;
+        index += 1;
+
+        result.push(Point((p0.0 + p1.0) / 2.0, (p0.1 + p1.1) / 2.0));
+
+        for p0 in segment.iter().skip(1).take(segment.len() - 2) {
+            // println!("index = {} {:?}", index, b_split_by_c[index][0]);
+            let p1 = b_split_by_c[index][0];
+            index += 1;
+
+            result.push(Point((p0.0 + p1.0) / 2.0, (p0.1 + p1.1) / 2.0));
+        }
+
+        // index += 1;
+    }
+
+    let p0 = a_split_by_b.last().unwrap().last().unwrap();
+    let p1 = b[b_point_index];
+
+    result.push(Point((p0.0 + p1.0) / 2.0, (p0.1 + p1.1) / 2.0));
+
+    let s = format!("{:?}", result).replace("Point", "");
+    panic!("{}", s);
+
+    true
+}
 
 // 0 ---  1 ---  2 ---  3 ---  4 --- 5
 //
